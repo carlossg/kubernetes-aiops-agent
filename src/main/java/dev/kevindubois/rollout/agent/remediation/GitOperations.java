@@ -25,33 +25,48 @@ public class GitOperations {
 	 * Clone a repository to a temporary directory
 	 * @param repoUrl GitHub repository URL
 	 * @param token GitHub personal access token
-	 * @return Path to cloned repository
+	 * @return the cloned repo's path and its actual default branch
 	 */
-	public Path cloneRepository(String repoUrl, String token) throws GitAPIException, IOException {
+	public ClonedRepo cloneRepository(String repoUrl, String token) throws GitAPIException, IOException {
 		Path localPath = Files.createTempDirectory("k8s-agent-fix-");
 		Log.info(MessageFormat.format("Cloning repository {0} to {1}", repoUrl, localPath));
-		
+
 		// For GitHub, use token as username with empty password
-		Git.cloneRepository()
-			.setURI(repoUrl)
-			.setDirectory(localPath.toFile())
-			.setCredentialsProvider(new UsernamePasswordCredentialsProvider(token, ""))
-			.call();
-		
-		Log.info("Successfully cloned repository");
-		return localPath;
+		try (Git git = Git.cloneRepository()
+				.setURI(repoUrl)
+				.setDirectory(localPath.toFile())
+				.setCredentialsProvider(new UsernamePasswordCredentialsProvider(token, ""))
+				.call()) {
+
+			// Capture the default branch now, while HEAD is guaranteed to still be
+			// on it (a fresh clone always checks out the remote's default branch).
+			String defaultBranch = git.getRepository().getBranch();
+			Log.info("Successfully cloned repository, default branch: " + defaultBranch);
+			return new ClonedRepo(localPath, defaultBranch);
+		}
 	}
-	
+
 	/**
 	 * Fetch latest changes from origin and hard-reset the working copy to the
 	 * default branch, discarding any local modifications or branches.
+	 *
+	 * @param defaultBranch the repo's actual default branch, as captured once at
+	 *                       clone time by {@link #cloneRepository}. This must NOT
+	 *                       be re-derived from the currently checked-out branch:
+	 *                       a prior remediation attempt may have left HEAD on a
+	 *                       throwaway "fix/..." branch (e.g. if it failed after
+	 *                       createBranch but before/during push), which would
+	 *                       make git.getRepository().getBranch() return that
+	 *                       feature branch instead of the real default - and
+	 *                       since that branch was often never pushed, resetting
+	 *                       to "origin/<that branch>" then fails outright with
+	 *                       "Invalid ref name" (the remote-tracking ref doesn't
+	 *                       exist).
 	 */
-	public void fetchAndReset(Path repoPath, String token) throws GitAPIException, IOException {
-		Log.info(MessageFormat.format("Fetching and resetting cached clone at {0}", repoPath));
+	public void fetchAndReset(Path repoPath, String token, String defaultBranch) throws GitAPIException, IOException {
+		Log.info(MessageFormat.format("Fetching and resetting cached clone at {0} to {1}", repoPath, defaultBranch));
 
 		try (Git git = Git.open(repoPath.toFile())) {
-			String defaultBranch = git.getRepository().getBranch();
-
 			// Checkout the default branch first (in case a feature branch is checked out)
 			git.checkout()
 				.setName(defaultBranch)
@@ -83,6 +98,8 @@ public class GitOperations {
 
 		Log.info("Cached clone is now clean and up-to-date");
 	}
+
+	public record ClonedRepo(Path path, String defaultBranch) {}
 
 	/**
 	 * Create and checkout a new branch
