@@ -63,12 +63,22 @@ jobs:
 
       - name: Build and push container image
         run: |
+          # IMAGE_NAME is already "owner/repo" (github.repository), so no
+          # separate --group is needed - passing both doubled the path into
+          # ghcr.io/<owner>/<owner>/<repo>.
+          #
+          # Tag primarily with the full commit SHA (guaranteed unique and
+          # immutable, unlike a branch name or "latest") so deployments can
+          # pin to an exact, traceable build. The other tags computed by
+          # docker/metadata-action (branch name, latest, short-sha) are kept
+          # as additional convenience tags on the same image.
+          ADDITIONAL_TAGS=$(echo '${{ steps.meta.outputs.json }}' | jq -r '.["tag-names"] | join(",")')
           ./mvnw -B package \
             -Dquarkus.container-image.build=true \
             -Dquarkus.container-image.push=true \
             -Dquarkus.container-image.registry=${{ env.REGISTRY }} \
-            -Dquarkus.container-image.group=${{ github.repository_owner }} \
             -Dquarkus.container-image.name=${{ env.IMAGE_NAME }} \
-            -Dquarkus.container-image.tag=${{ steps.meta.outputs.version }} \
+            -Dquarkus.container-image.tag=${{ github.sha }} \
+            -Dquarkus.container-image.additional-tags=${ADDITIONAL_TAGS} \
             -DskipTests
 
