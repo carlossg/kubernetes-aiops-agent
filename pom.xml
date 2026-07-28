@@ -93,6 +93,20 @@
             <groupId>io.quarkiverse.langchain4j</groupId>
             <artifactId>quarkus-langchain4j-openai</artifactId>
         </dependency>
+        <!--
+            Native Gemini client for the remediation model only. OpenAiChatModel
+            (via Gemini's OpenAI-compatible endpoint) cannot round-trip Gemini's
+            per-tool-call thought_signature - LangChain4j maintainers have said
+            this is out of scope for the generic OpenAI client, use the
+            dedicated Gemini integration instead (langchain4j/langchain4j#4097).
+            GoogleAiGeminiChatModel supports it natively via sendThinking/
+            returnThinking. The default/analysis model doesn't need this - its
+            tool calls don't span multiple turns, so it isn't affected.
+        -->
+        <dependency>
+            <groupId>io.quarkiverse.langchain4j</groupId>
+            <artifactId>quarkus-langchain4j-ai-gemini</artifactId>
+        </dependency>
         <!-- A2A Protocol Support -->
         <dependency>
             <groupId>dev.langchain4j</groupId>
