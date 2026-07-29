@@ -84,10 +84,13 @@ public class RemediationOrchestrator {
                     result.rootCause() != null ? result.rootCause() : "Unknown",
                     truncate(result.analysis(), 2000));
 
+            // No default assignee: GitHub returns 422 Unprocessable Entity if any
+            // assignee isn't a collaborator on the target repo, which broke this on
+            // any fork other than kdubois's own.
             GitHubRestClient.CreateIssueRequest request = new GitHubRestClient.CreateIssueRequest(
                     title, body,
                     new String[]{"deployment-failure", "canary"},
-                    new String[]{"kdubois"});
+                    new String[0]);
 
             GitHubRestClient.GitHubIssue issue = githubClient.createIssue(
                     ownerRepo[0], ownerRepo[1], authHeader, request);
