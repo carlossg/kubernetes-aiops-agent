@@ -353,7 +353,7 @@ spec:
 						# Fallback to default mode
 						stablePodLabel: app=rollouts-demo,revision=stable
 						canaryPodLabel: app=rollouts-demo,role=stable
-						model: gemini-3.5-flash
+						model: gemini-3.8-flash
 ```
 
 ### 2. The plugin will automatically:
@@ -556,7 +556,7 @@ mvn quarkus:dev
 ```bash
 export ANALYSIS_API_KEY="AIza..."
 export ANALYSIS_BASE_URL="https://generativelanguage.googleapis.com/v1beta/openai/"
-export ANALYSIS_MODEL="gemini-3.5-flash"
+export ANALYSIS_MODEL="gemini-3.8-flash"
 mvn quarkus:dev
 ```
 
